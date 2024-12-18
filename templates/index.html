@@ -20,8 +20,8 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background: #fafafa;
-            line-height: 1.6;
             color: #262626;
+            line-height: 1.6;
         }
 
         .container {
@@ -30,61 +30,39 @@
             padding: 20px;
         }
 
-        .header {
+        .login-section, .download-section {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        h1 {
             text-align: center;
+            color: #262626;
             margin-bottom: 30px;
         }
 
-        .header h1 {
-            color: #262626;
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-
-        .status-indicator {
-            display: inline-block;
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 14px;
+        .form-group {
             margin-bottom: 20px;
         }
 
-        .status-online {
-            background-color: #e8f5e9;
-            color: #2e7d32;
-        }
-
-        .status-offline {
-            background-color: #ffebee;
-            color: #c62828;
-        }
-
-        .download-form {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .input-group {
-            margin-bottom: 20px;
-        }
-
-        input[type="text"] {
+        input {
             width: 100%;
             padding: 12px;
             border: 1px solid #dbdbdb;
             border-radius: 4px;
             font-size: 14px;
-            transition: border-color 0.3s;
+            margin-top: 5px;
         }
 
-        input[type="text"]:focus {
+        input:focus {
             border-color: var(--primary-color);
             outline: none;
         }
 
-        .button {
+        button {
             width: 100%;
             padding: 12px;
             background-color: var(--primary-color);
@@ -97,21 +75,21 @@
             transition: background-color 0.3s;
         }
 
-        .button:hover {
+        button:hover {
             background-color: #0081d6;
         }
 
-        .button:disabled {
+        button:disabled {
             background-color: #b2dffc;
             cursor: not-allowed;
         }
 
         .message {
-            margin-top: 20px;
             padding: 10px;
             border-radius: 4px;
-            text-align: center;
+            margin-top: 10px;
             display: none;
+            text-align: center;
         }
 
         .error {
@@ -130,7 +108,7 @@
             margin: 20px 0;
         }
 
-        .loader-spinner {
+        .spinner {
             width: 40px;
             height: 40px;
             border: 4px solid #f3f3f3;
@@ -144,109 +122,83 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-
-        .instructions {
-            margin-top: 30px;
-            padding: 15px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .instructions h3 {
-            color: #262626;
-            margin-bottom: 10px;
-        }
-
-        .instructions ol {
-            padding-left: 20px;
-        }
-
-        .instructions li {
-            margin-bottom: 8px;
-            color: #666;
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>Instagram Video Downloader</h1>
-            <div id="status" class="status-indicator status-offline">Checking Status...</div>
+        <h1>Instagram Video Downloader</h1>
+        
+        <div class="login-section" id="loginSection">
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <input type="text" id="username" placeholder="Instagram Username" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="password" placeholder="Instagram Password" required>
+                </div>
+                <button type="submit">Login to Instagram</button>
+            </form>
+            <div class="message" id="loginMessage"></div>
         </div>
 
-        <div class="download-form">
+        <div class="download-section" id="downloadSection" style="display: none;">
             <form id="downloadForm" onsubmit="handleDownload(event)">
-                <div class="input-group">
-                    <input type="text" 
-                           id="videoUrl" 
-                           name="url" 
-                           placeholder="Paste Instagram video URL here" 
-                           required>
+                <div class="form-group">
+                    <input type="url" id="videoUrl" placeholder="Paste Instagram video URL here" required>
                 </div>
-                <button type="submit" class="button" id="downloadButton">Download Video</button>
+                <button type="submit">Download Video</button>
             </form>
-
             <div class="loader" id="loader">
-                <div class="loader-spinner"></div>
+                <div class="spinner"></div>
                 <p>Downloading video...</p>
             </div>
-
-            <div class="message" id="message"></div>
-        </div>
-
-        <div class="instructions">
-            <h3>How to Use:</h3>
-            <ol>
-                <li>Copy the URL of any Instagram video from your feed</li>
-                <li>Paste the URL in the input field above</li>
-                <li>Click "Download Video"</li>
-                <li>Wait for the download to complete</li>
-            </ol>
+            <div class="message" id="downloadMessage"></div>
         </div>
     </div>
 
     <script>
-        // Check login status on page load
-        window.onload = async function() {
-            try {
-                const response = await fetch('/status');
-                const data = await response.json();
-                updateStatus(data.logged_in);
-            } catch (error) {
-                updateStatus(false);
-            }
-        };
+        async function handleLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const loginMessage = document.getElementById('loginMessage');
 
-        function updateStatus(isLoggedIn) {
-            const statusElement = document.getElementById('status');
-            if (isLoggedIn) {
-                statusElement.textContent = 'Connected to Instagram';
-                statusElement.className = 'status-indicator status-online';
-            } else {
-                statusElement.textContent = 'Not Connected';
-                statusElement.className = 'status-indicator status-offline';
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    document.getElementById('loginSection').style.display = 'none';
+                    document.getElementById('downloadSection').style.display = 'block';
+                    showMessage(loginMessage, 'Login successful!', 'success');
+                } else {
+                    showMessage(loginMessage, data.error, 'error');
+                }
+            } catch (error) {
+                showMessage(loginMessage, 'Login failed. Please try again.', 'error');
             }
         }
 
         async function handleDownload(event) {
             event.preventDefault();
-            
-            const form = document.getElementById('downloadForm');
-            const button = document.getElementById('downloadButton');
-            const loader = document.getElementById('loader');
-            const message = document.getElementById('message');
             const url = document.getElementById('videoUrl').value;
-
-            // Reset UI
-            message.style.display = 'none';
-            button.disabled = true;
+            const loader = document.getElementById('loader');
+            const downloadMessage = document.getElementById('downloadMessage');
+            
             loader.style.display = 'block';
-
             try {
                 const response = await fetch('/download', {
                     method: 'POST',
-                    body: new FormData(form)
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url })
                 });
 
                 if (response.ok) {
@@ -258,26 +210,24 @@
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(downloadUrl);
-                    showMessage('Video downloaded successfully!', 'success');
+                    showMessage(downloadMessage, 'Download successful!', 'success');
                 } else {
-                    const error = await response.json();
-                    showMessage(error.error || 'Download failed', 'error');
+                    const data = await response.json();
+                    showMessage(downloadMessage, data.error, 'error');
                 }
             } catch (error) {
-                showMessage('An error occurred while downloading', 'error');
+                showMessage(downloadMessage, 'Download failed. Please try again.', 'error');
             } finally {
-                button.disabled = false;
                 loader.style.display = 'none';
             }
         }
 
-        function showMessage(text, type) {
-            const message = document.getElementById('message');
-            message.textContent = text;
-            message.className = `message ${type}`;
-            message.style.display = 'block';
+        function showMessage(element, text, type) {
+            element.textContent = text;
+            element.className = `message ${type}`;
+            element.style.display = 'block';
             setTimeout(() => {
-                message.style.display = 'none';
+                element.style.display = 'none';
             }, 5000);
         }
     </script>
