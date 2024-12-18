@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Video Downloader</title>
+    <style>
+        :root {
+            --primary-color: #0095f6;
+            --error-color: #ed4956;
+            --success-color: #2ecc71;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #fafafa;
+            line-height: 1.6;
+            color: #262626;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #262626;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .status-online {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .status-offline {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+
+        .download-form {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #dbdbdb;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+
+        .button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .button:hover {
+            background-color: #0081d6;
+        }
+
+        .button:disabled {
+            background-color: #b2dffc;
+            cursor: not-allowed;
+        }
+
+        .message {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            display: none;
+        }
+
+        .error {
+            background-color: #ffebee;
+            color: var(--error-color);
+        }
+
+        .success {
+            background-color: #e8f5e9;
+            color: var(--success-color);
+        }
+
+        .loader {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .loader-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .instructions {
+            margin-top: 30px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .instructions h3 {
+            color: #262626;
+            margin-bottom: 10px;
+        }
+
+        .instructions ol {
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Instagram Video Downloader</h1>
+            <div id="status" class="status-indicator status-offline">Checking Status...</div>
+        </div>
+
+        <div class="download-form">
+            <form id="downloadForm" onsubmit="handleDownload(event)">
+                <div class="input-group">
+                    <input type="text" 
+                           id="videoUrl" 
+                           name="url" 
+                           placeholder="Paste Instagram video URL here" 
+                           required>
+                </div>
+                <button type="submit" class="button" id="downloadButton">Download Video</button>
+            </form>
+
+            <div class="loader" id="loader">
+                <div class="loader-spinner"></div>
+                <p>Downloading video...</p>
+            </div>
+
+            <div class="message" id="message"></div>
+        </div>
+
+        <div class="instructions">
+            <h3>How to Use:</h3>
+            <ol>
+                <li>Copy the URL of any Instagram video from your feed</li>
+                <li>Paste the URL in the input field above</li>
+                <li>Click "Download Video"</li>
+                <li>Wait for the download to complete</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // Check login status on page load
+        window.onload = async function() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+                updateStatus(data.logged_in);
+            } catch (error) {
+                updateStatus(false);
+            }
+        };
+
+        function updateStatus(isLoggedIn) {
+            const statusElement = document.getElementById('status');
+            if (isLoggedIn) {
+                statusElement.textContent = 'Connected to Instagram';
+                statusElement.className = 'status-indicator status-online';
+            } else {
+                statusElement.textContent = 'Not Connected';
+                statusElement.className = 'status-indicator status-offline';
+            }
+        }
+
+        async function handleDownload(event) {
+            event.preventDefault();
+            
+            const form = document.getElementById('downloadForm');
+            const button = document.getElementById('downloadButton');
+            const loader = document.getElementById('loader');
+            const message = document.getElementById('message');
+            const url = document.getElementById('videoUrl').value;
+
+            // Reset UI
+            message.style.display = 'none';
+            button.disabled = true;
+            loader.style.display = 'block';
+
+            try {
+                const response = await fetch('/download', {
+                    method: 'POST',
+                    body: new FormData(form)
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = 'instagram_video.mp4';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(downloadUrl);
+                    showMessage('Video downloaded successfully!', 'success');
+                } else {
+                    const error = await response.json();
+                    showMessage(error.error || 'Download failed', 'error');
+                }
+            } catch (error) {
+                showMessage('An error occurred while downloading', 'error');
+            } finally {
+                button.disabled = false;
+                loader.style.display = 'none';
+            }
+        }
+
+        function showMessage(text, type) {
+            const message = document.getElementById('message');
+            message.textContent = text;
+            message.className = `message ${type}`;
+            message.style.display = 'block';
+            setTimeout(() => {
+                message.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
